@@ -14,7 +14,18 @@ const FALLBACK_PATHS = [
   resolve(process.cwd(), "../polymarket-btc5-tracker/src/data/credential.json"),
 ];
 
+function getCredsFromEnv(): ApiKeyCreds | null {
+  const key = process.env.POLY_API_KEY || process.env.POLY_BUILDER_API_KEY;
+  const secret = process.env.POLY_SECRET || process.env.POLY_BUILDER_SECRET;
+  const passphrase = process.env.POLY_PASSPHRASE || process.env.POLY_BUILDER_PASSPHRASE;
+  if (key && secret && passphrase) {
+    return { key, secret, passphrase };
+  }
+  return null;
+}
+
 async function ensureCredential(): Promise<void> {
+  if (getCredsFromEnv()) return;
   if (existsSync(CREDENTIAL_PATH)) return;
 
   for (const p of FALLBACK_PATHS) {
@@ -35,14 +46,16 @@ async function ensureCredential(): Promise<void> {
 export async function getClobClient(): Promise<ClobClient> {
   await ensureCredential();
 
-  if (!existsSync(CREDENTIAL_PATH)) {
-    throw new Error(
-      "Credential file not found. Set PRIVATE_KEY in .env to create from Polymarket, " +
-        "or copy credential.json from polymarket-btc15-tracker/src/data/"
-    );
+  let creds: ApiKeyCreds | null = getCredsFromEnv();
+  if (!creds) {
+    if (!existsSync(CREDENTIAL_PATH)) {
+      throw new Error(
+        "Credential file not found. Set PRIVATE_KEY in .env and run 'npm run credential:recreate', " +
+          "or set POLY_API_KEY, POLY_SECRET, POLY_PASSPHRASE in .env"
+      );
+    }
+    creds = JSON.parse(readFileSync(CREDENTIAL_PATH, "utf-8")) as ApiKeyCreds;
   }
-
-  const creds: ApiKeyCreds = JSON.parse(readFileSync(CREDENTIAL_PATH, "utf-8"));
   const chainId = tradingEnv.CHAIN_ID as Chain;
   const host = tradingEnv.CLOB_API_URL;
 

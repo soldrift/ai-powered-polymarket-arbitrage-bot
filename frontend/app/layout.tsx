@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ToastProvider } from "@/contexts/ToastContext";
+import { NavLinks } from "@/components/NavLinks";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Polymarket Impulse Bot",
-  description: "Detect sudden price impulses, buy rising side, trail and hedge",
+  title: "PolyTrail | Polymarket Trading Bot",
+  description: "Polymarket trading bot – impulse detection, trailing stop, hedging, auto-redeem for Up/Down markets",
 };
 
 export default function RootLayout({
@@ -15,24 +17,24 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="layout">
-          <header className="layoutHeader">
-            <div className="layoutHeaderInner">
-              <Link href="/" className="appTitle">
-                Polymarket Impulse Bot
-              </Link>
-              <nav className="nav">
-                <Link href="/" className="navLink">
-                  Dashboard
-                </Link>
-                <Link href="/settings" className="navLink">
-                  Settings
-                </Link>
-              </nav>
-            </div>
-          </header>
-          <main className="main">{children}</main>
+        <ToastProvider>
+        <div className="layout layoutWithSidebar">
+          <aside className="sidebar">
+            <Link href="/" className="sidebarLogo">
+              <span className="appLogo">▲ PolyTrail</span>
+            </Link>
+            <nav className="sidebarNav">
+              <NavLinks />
+            </nav>
+          </aside>
+          <div className="layoutMain">
+            <header className="layoutHeader">
+              <div className="layoutHeaderInner" />
+            </header>
+            <main className="main">{children}</main>
+          </div>
         </div>
+        </ToastProvider>
       </body>
     </html>
   );

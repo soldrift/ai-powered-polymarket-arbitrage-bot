@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useToast } from "@/contexts/ToastContext";
 
 interface Config {
   slugPrefix: string;
@@ -24,12 +25,43 @@ const DEFAULT_CONFIG: Config = {
   pollIntervalMs: 2000,
 };
 
+const PRESETS: Record<string, Partial<Config>> = {
+  conservative: {
+    slugPrefix: "btc-updown-15m",
+    windowSeconds: 900,
+    limitPrice: 0.65,
+    minJump: 0.08,
+    lookbackSec: 90,
+    trailingStopPct: 4,
+    buyAmountUsd: 5,
+  },
+  balanced: {
+    slugPrefix: "btc-updown-15m",
+    windowSeconds: 900,
+    limitPrice: 0.55,
+    minJump: 0.05,
+    lookbackSec: 60,
+    trailingStopPct: 5,
+    buyAmountUsd: 10,
+  },
+  aggressive: {
+    slugPrefix: "btc-updown-5m",
+    windowSeconds: 300,
+    limitPrice: 0.50,
+    minJump: 0.03,
+    lookbackSec: 45,
+    trailingStopPct: 6,
+    buyAmountUsd: 15,
+  },
+};
+
 export function BotManagement() {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,8 +99,10 @@ export function BotManagement() {
       if (data.ok) {
         setEnabled(data.enabled);
         setMessage(data.enabled ? "Bot enabled" : "Bot disabled");
+        toast(data.enabled ? "Bot enabled" : "Bot disabled", "success");
       } else {
         setMessage(data.error || "Failed");
+        toast(data.error || "Failed", "error");
       }
     } catch (err) {
       setMessage("Request failed");
@@ -89,8 +123,10 @@ export function BotManagement() {
       const data = await res.json();
       if (data.ok) {
         setMessage("Config saved");
+        toast("Config saved", "success");
       } else {
         setMessage(data.error || "Failed");
+        toast(data.error || "Failed", "error");
       }
     } catch (err) {
       setMessage("Request failed");
@@ -117,6 +153,24 @@ export function BotManagement() {
           {enabled ? "Running" : "Stopped"}
         </span>
         {message && <span style={{ color: "var(--text-secondary)" }}>{message}</span>}
+      </div>
+
+      <div className="sectionTitle">Config Presets</div>
+      <div style={{ display: "flex", gap: "var(--space-sm)", marginBottom: "var(--space-lg)", flexWrap: "wrap" }}>
+        {Object.entries(PRESETS).map(([name, preset]) => (
+          <button
+            key={name}
+            type="button"
+            className="btn btnSecondary"
+            style={{ textTransform: "capitalize", fontSize: "0.8125rem" }}
+            onClick={() => {
+              setConfig((c) => ({ ...c, ...preset }));
+              toast(`Applied ${name} preset`, "info");
+            }}
+          >
+            {name}
+          </button>
+        ))}
       </div>
 
       <div className="sectionTitle">Config</div>

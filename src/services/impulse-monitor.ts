@@ -83,6 +83,14 @@ export class ImpulseMonitor {
       );
     }
 
+    const now = Date.now() / 1000;
+    const [upHistory, downHistory] = await Promise.all([
+      this.redis.getPriceHistory(marketInfo.upTokenId, config.lookbackSec),
+      this.redis.getPriceHistory(marketInfo.downTokenId, config.lookbackSec),
+    ]);
+    const lastUpPrice = upHistory.length > 0 ? upHistory[upHistory.length - 1].price : null;
+    const lastDownPrice = downHistory.length > 0 ? downHistory[downHistory.length - 1].price : null;
+
     let upPrice: number;
     let downPrice: number;
 
@@ -94,25 +102,27 @@ export class ImpulseMonitor {
       if (upPrice === 0 || downPrice === 0) {
         const cached = this.realtimePriceService.getCachedPrices();
         if (cached) {
-          upPrice = upPrice || cached.upPrice || 0.5;
-          downPrice = downPrice || cached.downPrice || 0.5;
+          upPrice = upPrice || cached.upPrice;
+          downPrice = downPrice || cached.downPrice;
         }
       }
+      if (upPrice === 0) upPrice = lastUpPrice ?? 0.5;
+      if (downPrice === 0) downPrice = lastDownPrice ?? 0.5;
     } else {
       const [upBook, downBook] = await Promise.all([
         this.polymarket.getOrderBook(marketInfo.upTokenId),
         this.polymarket.getOrderBook(marketInfo.downTokenId),
       ]);
-      upPrice = upBook?.asks?.length ? parseFloat(upBook.asks[0].price) : 0.5;
-      downPrice = downBook?.asks?.length ? parseFloat(downBook.asks[0].price) : 0.5;
+      const upFromBook = upBook?.asks?.length ? parseFloat(upBook.asks[0].price) : null;
+      const downFromBook = downBook?.asks?.length ? parseFloat(downBook.asks[0].price) : null;
+      upPrice = upFromBook ?? lastUpPrice ?? 0.5;
+      downPrice = downFromBook ?? lastDownPrice ?? 0.5;
     }
 
-    const now = Date.now() / 1000;
-    await this.redis.appendPriceHistory(marketInfo.upTokenId, now, upPrice || 0.5);
-    await this.redis.appendPriceHistory(marketInfo.downTokenId, now, downPrice || 0.5);
-
-    const upHistory = await this.redis.getPriceHistory(marketInfo.upTokenId, config.lookbackSec);
-    const downHistory = await this.redis.getPriceHistory(marketInfo.downTokenId, config.lookbackSec);
+    const usedFallback05Up = upPrice === 0.5 && lastUpPrice == null;
+    const usedFallback05Down = downPrice === 0.5 && lastDownPrice == null;
+    if (!usedFallback05Up) await this.redis.appendPriceHistory(marketInfo.upTokenId, now, upPrice);
+    if (!usedFallback05Down) await this.redis.appendPriceHistory(marketInfo.downTokenId, now, downPrice);
 
     let position = await this.redis.getPosition(marketInfo.conditionId);
 

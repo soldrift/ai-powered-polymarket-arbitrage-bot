@@ -5,7 +5,7 @@ const root = __dirname;
 module.exports = {
   apps: [
     {
-      name: "impulse-bot",
+      name: "polytrail-bot",
       cwd: root,
       script: "node",
       args: "dist/index.js",
@@ -15,7 +15,7 @@ module.exports = {
       watch: false,
     },
     {
-      name: "impulse-frontend",
+      name: "polytrail-frontend",
       cwd: path.join(root, "frontend"),
       script: "npm",
       args: "run start",

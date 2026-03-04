@@ -46,7 +46,7 @@ export class PolymarketClient {
     try {
       const pathRes = await fetch(
         `${GAMMA_EVENTS_URL}/slug/${encodeURIComponent(slug)}`,
-        { headers: { Accept: "application/json", "User-Agent": "PolymarketImpulseBot/1.0" } }
+        { headers: { Accept: "application/json", "User-Agent": "PolyTrail/1.0" } }
       );
       if (pathRes.ok) {
         const data = (await pathRes.json()) as unknown;
@@ -55,7 +55,7 @@ export class PolymarketClient {
       }
       const queryRes = await fetch(
         `${GAMMA_EVENTS_URL}?slug=${encodeURIComponent(slug)}`,
-        { headers: { Accept: "application/json", "User-Agent": "PolymarketImpulseBot/1.0" } }
+        { headers: { Accept: "application/json", "User-Agent": "PolyTrail/1.0" } }
       );
       if (!queryRes.ok) return null;
       const data = await queryRes.json();
@@ -117,7 +117,7 @@ export class PolymarketClient {
     try {
       const url = `${CLOB_BOOK_URL}?token_id=${encodeURIComponent(tokenId)}`;
       const res = await fetch(url, {
-        headers: { Accept: "application/json", "User-Agent": "PolymarketImpulseBot/1.0" },
+        headers: { Accept: "application/json", "User-Agent": "PolyTrail/1.0" },
       });
       if (!res.ok) return null;
       const data = (await res.json()) as { bids?: unknown[]; asks?: unknown[]; error?: string };

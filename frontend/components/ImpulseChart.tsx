@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   LineChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -47,14 +48,15 @@ function ImpulseDot(props: { cx?: number; cy?: number; payload?: PricePoint }) {
   const { cx, cy, payload } = props;
   if (!payload?.impulse || cx == null || cy == null) return null;
   const isUp = payload.impulse.side === "Up";
-  const fill = isUp ? "#22c55e" : "#ef4444"; /* green/red with Polygon purple outline */
+  const fill = isUp ? "var(--up-color)" : "var(--down-color)";
+  const stroke = isUp ? "var(--accent)" : "var(--accent-2)";
   return (
     <g transform={`translate(${cx},${cy})`}>
       <path
         d={POLYGON_HEX}
         fill={fill}
-        stroke="#8247E5"
-        strokeWidth={1.5}
+        stroke={stroke}
+        strokeWidth={2}
       />
     </g>
   );
@@ -77,7 +79,7 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
         <span style={{ color: "var(--error)" }}>Down:</span> {p.down.toFixed(3)}
       </div>
       {p.impulse && (
-        <div style={{ marginTop: 4, color: "#8247E5" }}>
+        <div style={{ marginTop: 4, color: "var(--accent)" }}>
           Impulse {p.impulse.side} @ {p.impulse.price.toFixed(3)}
         </div>
       )}
@@ -151,18 +153,38 @@ export function ImpulseChart({
       if (downVal != null && downVal > 0) lastDown = downVal;
       return {
         ts,
-        up,
-        down,
+        up: up ?? 0.5,
+        down: down ?? 0.5,
         time: new Date(ts * 1000).toLocaleTimeString(),
         ...(imp ? { impulse: { side: imp.side, price: imp.price } } : {}),
       };
     });
   }, [upHistory, downHistory, upPrice, downPrice, marketStartTime, marketEndTime, impulseEvents]);
 
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
+  useEffect(() => {
+    const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const total = marketStartTime != null && marketEndTime != null ? marketEndTime - marketStartTime : 0;
+  const elapsed = marketStartTime != null ? now - marketStartTime : 0;
+  const remaining = marketEndTime != null ? marketEndTime - now : 0;
+  const progressPct = total > 0 && elapsed >= 0 ? Math.min(100, (elapsed / total) * 100) : 0;
+
   if (data.length < 2) {
     return (
       <div className="card" style={{ minHeight: 240 }}>
         <div className="cardTitle">Up / Down Price (current market)</div>
+        {marketStartTime != null && marketEndTime != null && remaining > 0 && (
+          <div className="countdown-wrap" style={{ marginBottom: 12 }}>
+            <div className="countdown-bar-wrap">
+              <div className="countdown-bar" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="countdown-text">
+              {Math.floor(remaining / 60)}:{(remaining % 60).toString().padStart(2, "0")} left
+            </span>
+          </div>
+        )}
         <div className="loading">Waiting for price data…</div>
       </div>
     );
@@ -170,14 +192,36 @@ export function ImpulseChart({
 
   return (
     <div className="card">
-      <div className="cardTitle">
-        Up / Down Price (current market)
-        {wsConnected && <span style={{ color: "var(--success)", fontSize: "0.75rem", marginLeft: 6 }}>● live</span>}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div className="cardTitle" style={{ marginBottom: 0 }}>
+          Up / Down Price (current market)
+          {wsConnected && <span className="livePulse" style={{ color: "var(--success)", fontSize: "0.75rem", marginLeft: 6 }}>● live</span>}
+        </div>
+        {marketStartTime != null && marketEndTime != null && remaining > 0 && (
+          <div className="countdown-wrap" style={{ flex: "none", minWidth: 100 }}>
+            <div className="countdown-bar-wrap">
+              <div className="countdown-bar" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="countdown-text">
+              {Math.floor(remaining / 60)}:{(remaining % 60).toString().padStart(2, "0")}
+            </span>
+          </div>
+        )}
       </div>
       <div style={{ height: 280 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+          <LineChart data={data} margin={{ top: 12, right: 12, left: 8, bottom: 8 }}>
+            <defs>
+              <linearGradient id="upGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="downGradient" x1="0" y1="1" x2="0" y2="0">
+                <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#f43f5e" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(34, 211, 238, 0.15)" vertical={true} />
             <XAxis
               dataKey="ts"
               type="number"
@@ -205,12 +249,14 @@ export function ImpulseChart({
                 label={{ value: `Limit ${limitPrice}`, fill: "var(--warning)" }}
               />
             )}
-            <Tooltip content={<CustomTooltip />} />
-            <Legend />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "var(--accent)", strokeWidth: 1, strokeDasharray: "4 4" }} />
+            <Legend wrapperStyle={{ paddingTop: 8 }} />
+            <Area type="monotone" dataKey="up" fill="url(#upGradient)" stroke="none" />
+            <Area type="monotone" dataKey="down" fill="url(#downGradient)" stroke="none" />
             <Line
               type="monotone"
               dataKey="up"
-              stroke="var(--success)"
+              stroke="var(--up-color)"
               dot={(props) => {
                 const p = props.payload as PricePoint;
                 return p?.impulse && p.impulse.side === "Up" ? (
@@ -220,12 +266,12 @@ export function ImpulseChart({
                 );
               }}
               name="Up"
-              strokeWidth={2}
+              strokeWidth={2.5}
             />
             <Line
               type="monotone"
               dataKey="down"
-              stroke="var(--error)"
+              stroke="var(--down-color)"
               dot={(props) => {
                 const p = props.payload as PricePoint;
                 return p?.impulse && p.impulse.side === "Down" ? (
@@ -235,7 +281,7 @@ export function ImpulseChart({
                 );
               }}
               name="Down"
-              strokeWidth={2}
+              strokeWidth={2.5}
             />
           </LineChart>
         </ResponsiveContainer>

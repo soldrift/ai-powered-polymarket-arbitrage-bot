@@ -1,14 +1,15 @@
 {
-  "name": "polymarket-impulse-bot",
+  "name": "polytrail",
   "version": "1.0.0",
-  "description": "Polymarket Impulse Bot - detect sudden price jumps, buy rising side, trail and hedge",
+  "description": "PolyTrail – Polymarket trading bot. Impulse detection, auto-entry, trailing stop, hedging, auto-redeem. For Up/Down binary markets.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "dev": "node dist/index.js",
-    "start": "npx ts-node src/index.ts"
+    "start": "npx ts-node src/index.ts",
+    "credential:recreate": "npx ts-node src/scripts/recreate-credential.ts"
   },
-  "keywords": ["polymarket", "impulse", "trading", "bot"],
+  "keywords": ["polymarket", "polytrail", "trading", "bot", "impulse", "trailing-stop", "binary-markets"],
   "license": "ISC",
   "dependencies": {
     "@ethersproject/bignumber": "^5.7.0",

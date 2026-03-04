@@ -21,7 +21,7 @@ import { logger } from "./logger";
 const POLL_INTERVAL_MS = tradingEnv.IMPULSE_POLL_INTERVAL_MS;
 
 async function main(): Promise<void> {
-  logger.start("Polymarket Impulse Bot");
+  logger.start("PolyTrail");
 
   const polymarket = new PolymarketClient();
   const redis = new RedisClient();
@@ -90,28 +90,29 @@ async function main(): Promise<void> {
     const updateBalanceAndPosition = async () => {
       try {
         if (!tradingEnv.PRIVATE_KEY) return;
-        const state = await redis.getImpulseState();
-        if (!state) return;
 
         const clob = await getClobClient();
         const { balanceUsd } = await getProxyWalletBalanceUsd(clob);
         await redis.setWalletBalanceUsd(balanceUsd);
 
-        const conditionId = state.conditionId as string | undefined;
-        const upTokenId = state.upTokenId as string | undefined;
-        const downTokenId = state.downTokenId as string | undefined;
-        const upPrice = (state.upPrice as number) ?? 0;
-        const downPrice = (state.downPrice as number) ?? 0;
+        const state = await redis.getImpulseState();
+        if (state) {
+          const conditionId = state.conditionId as string | undefined;
+          const upTokenId = state.upTokenId as string | undefined;
+          const downTokenId = state.downTokenId as string | undefined;
+          const upPrice = (state.upPrice as number) ?? 0;
+          const downPrice = (state.downPrice as number) ?? 0;
 
-        if (conditionId && upTokenId && downTokenId && (upPrice > 0 || downPrice > 0)) {
-          const holdings = loadHoldings();
-          const marketHoldings = holdings[conditionId] ?? {};
-          const upShares = marketHoldings[upTokenId] ?? 0;
-          const downShares = marketHoldings[downTokenId] ?? 0;
-          const positionValueUsd = upShares * upPrice + downShares * downPrice;
-          await redis.setPositionValueUsd(positionValueUsd);
-        } else {
-          await redis.setPositionValueUsd(0);
+          if (conditionId && upTokenId && downTokenId && (upPrice > 0 || downPrice > 0)) {
+            const holdings = loadHoldings();
+            const marketHoldings = holdings[conditionId] ?? {};
+            const upShares = marketHoldings[upTokenId] ?? 0;
+            const downShares = marketHoldings[downTokenId] ?? 0;
+            const positionValueUsd = upShares * upPrice + downShares * downPrice;
+            await redis.setPositionValueUsd(positionValueUsd);
+          } else {
+            await redis.setPositionValueUsd(0);
+          }
         }
       } catch (_) {}
     };
@@ -119,7 +120,7 @@ async function main(): Promise<void> {
     updateBalanceAndPosition();
     setInterval(updateBalanceAndPosition, 5_000);
 
-    logger.ok(`Impulse bot running (poll ${POLL_INTERVAL_MS}ms)`);
+    logger.ok(`PolyTrail running (poll ${POLL_INTERVAL_MS}ms)`);
   } catch (err) {
     logger.error("Failed to start", err);
     await redis.disconnect();

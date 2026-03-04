@@ -46,17 +46,25 @@ export async function getProxyWalletBalanceUsd(client: ClobClient): Promise<{
   allowanceUsd: number;
   availableUsd: number;
 }> {
+  const proxyAddress = (tradingEnv.PROXY_WALLET_ADDRESS ?? "").trim();
   try {
     const balanceResponse = await client.getBalanceAllowance({
       asset_type: AssetType.COLLATERAL,
     });
-    const balanceUsd = parseClobAmount(balanceResponse.balance);
+    let balanceUsd = parseClobAmount(balanceResponse.balance);
     let allowanceUsd = parseClobAmount(balanceResponse.allowance);
-    const proxyAddress = (tradingEnv.PROXY_WALLET_ADDRESS ?? "").trim();
-    if (proxyAddress && balanceUsd > 0 && allowanceUsd === 0) {
+
+    if (proxyAddress && balanceUsd === 0) {
+      const onChain = await getProxyOnChainBalanceAllowance(proxyAddress);
+      if (onChain && onChain.balanceUsd > 0) {
+        balanceUsd = onChain.balanceUsd;
+        if (allowanceUsd === 0) allowanceUsd = onChain.allowanceUsd;
+      }
+    } else if (proxyAddress && balanceUsd > 0 && allowanceUsd === 0) {
       const onChain = await getProxyOnChainBalanceAllowance(proxyAddress);
       if (onChain) allowanceUsd = onChain.allowanceUsd;
     }
+
     const availableUsd = Math.min(balanceUsd, allowanceUsd);
     return {
       balanceUsd: Math.max(0, balanceUsd),
@@ -64,6 +72,17 @@ export async function getProxyWalletBalanceUsd(client: ClobClient): Promise<{
       availableUsd: Math.max(0, availableUsd),
     };
   } catch {
+    if (proxyAddress) {
+      const onChain = await getProxyOnChainBalanceAllowance(proxyAddress);
+      if (onChain) {
+        const availableUsd = Math.min(onChain.balanceUsd, onChain.allowanceUsd);
+        return {
+          balanceUsd: onChain.balanceUsd,
+          allowanceUsd: onChain.allowanceUsd,
+          availableUsd: Math.max(0, availableUsd),
+        };
+      }
+    }
     return { balanceUsd: 0, allowanceUsd: 0, availableUsd: 0 };
   }
 }
