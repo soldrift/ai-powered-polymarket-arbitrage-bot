@@ -16,12 +16,12 @@ import { getClobClient } from "./providers/clobclient";
 import { getProxyWalletBalanceUsd } from "./utils/balance";
 import { loadHoldings } from "./utils/holdings";
 import { tradingEnv, getDefaultImpulseConfig, maskAddress } from "./config/env";
-import { logger } from "./logger";
+import { logger } from "pino-pretty-log";
 
 const POLL_INTERVAL_MS = tradingEnv.IMPULSE_POLL_INTERVAL_MS;
 
 async function main(): Promise<void> {
-  logger.start("PolyTrail");
+  logger.info("PolyTrail");
 
   const polymarket = new PolymarketClient();
   const redis = new RedisClient();
@@ -30,10 +30,10 @@ async function main(): Promise<void> {
 
   try {
     await redis.connect();
-    logger.connect("Redis");
+    logger.info("Redis");
 
     await mongodb.connect();
-    logger.connect("MongoDB");
+    logger.info("MongoDB");
 
     const config = await redis.getConfig();
     const effectiveConfig = config || getDefaultImpulseConfig();
@@ -50,7 +50,7 @@ async function main(): Promise<void> {
         await runApprove(clob);
         const { balanceUsd, allowanceUsd } = await getProxyWalletBalanceUsd(clob);
         const allowStr = allowanceUsd >= 1e20 ? "max" : allowanceUsd.toFixed(2);
-        logger.ok(`Balance $${balanceUsd.toFixed(2)}, allowance $${allowStr}`);
+        logger.info(`Balance $${balanceUsd.toFixed(2)}, allowance $${allowStr}`);
         const proxy = (tradingEnv.PROXY_WALLET_ADDRESS ?? "").trim();
         logger.info(proxy ? `Trading: proxy ${maskAddress(proxy)}` : "Trading: EOA");
       } catch (err) {
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
     updateBalanceAndPosition();
     setInterval(updateBalanceAndPosition, 5_000);
 
-    logger.ok(`PolyTrail running (poll ${POLL_INTERVAL_MS}ms)`);
+    logger.info(`PolyTrail running (poll ${POLL_INTERVAL_MS}ms)`);
   } catch (err) {
     logger.error("Failed to start", err);
     await redis.disconnect();
@@ -129,7 +129,7 @@ async function main(): Promise<void> {
   }
 
   process.on("SIGINT", async () => {
-    logger.stop("Shutting down…");
+    logger.info("Shutting down…");
     realtimePriceService?.shutdown();
     await redis.disconnect();
     await mongodb.disconnect();

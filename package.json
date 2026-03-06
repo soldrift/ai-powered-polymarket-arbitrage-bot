@@ -9,7 +9,15 @@
     "start": "npx ts-node src/index.ts",
     "credential:recreate": "npx ts-node src/scripts/recreate-credential.ts"
   },
-  "keywords": ["polymarket", "polytrail", "trading", "bot", "impulse", "trailing-stop", "binary-markets"],
+  "keywords": [
+    "polymarket",
+    "polytrail",
+    "trading",
+    "bot",
+    "impulse",
+    "trailing-stop",
+    "binary-markets"
+  ],
   "license": "ISC",
   "dependencies": {
     "@ethersproject/bignumber": "^5.7.0",
@@ -25,6 +33,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "mongodb": "^6.3.0",
+    "pino-pretty-log": "^1.0.1",
     "redis": "^4.7.0",
     "ws": "^8.19.0"
   },
